@@ -7,14 +7,24 @@ services:
       - '3306:3306'
     volumes:
       - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      retries: 5
+      timeout: 5s
   app:
     build: .
+    volumes:
+      - .:/app
+      - /app/node_modules
     ports:
       - "3000:3000"
     env_file:
       - .env
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
+    command: ["sh", "-c", "npx prisma generate && npx prisma migrate deploy && node server.js"]
 
 volumes:
   mysql-data: 

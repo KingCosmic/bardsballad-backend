@@ -26,23 +26,33 @@ This is a simple Express server that responds with "Hello, World!" when accessed
 #### Using Docker
 1. Build the Docker image:
    ```bash
-   docker build -t my-express-app .
+   docker build -t bb-backend .
    ```
 
 2. Run the Docker container:
    ```bash
-   docker run -p 3000:3000 my-express-app
+   docker run -p 3000:3000 bb-backend
    ```
 
 #### Using Docker Compose
-1. Start the application with Docker Compose:
+1. Build the application with Docker Compose:
+   ```bash
+   docker-compose up --build
+   ```
+
+2. Start the application:
    ```bash
    docker-compose up
    ```
 
-2. Stop the application:
+3. Stop the application:
    ```bash
    docker-compose down
+   ```
+
+4. Stop the application, remove containers, and volumes:
+   ```bash
+   docker-compose down -v
    ```
 
 ### Accessing the Application

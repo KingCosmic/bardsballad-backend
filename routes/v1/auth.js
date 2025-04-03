@@ -34,7 +34,9 @@ router.post('/register', async (req, res) => {
 
   let token;
   try {
-    token = jwt.sign({ username: user.username, email: user.email }, 'your_jwt_secret', { expiresIn: '1h' });
+    token = jwt.sign({
+      id: user.id, username: user.username, email: user.email, role: user.role
+    }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN });
   } catch (error) {
     return res.status(500).send(new Error('Error! Something went wrong.'));
   }
@@ -58,7 +60,9 @@ router.post('/login', async (req, res) => {
 
   let token;
   try {
-    token = jwt.sign({ username: user.username }, 'your_jwt_secret', { expiresIn: '1h' });
+    token = jwt.sign({
+      id: user.id, username: user.username, email: user.email, role: user.role
+    }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN });
   } catch (error) {
     return res.status(500).send(new Error('Error! Something went wrong.'));
   }

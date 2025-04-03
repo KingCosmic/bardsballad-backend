@@ -14,8 +14,29 @@ datasource db {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
+  id        String   @id @default(uuid())
   username  String   @unique
   email     String   @unique
   password  String
+  role      String   @default("free")
+}
+
+model Character {
+  id        String   @id
+  name      String
+
+  data      Json
+  system    Json
+
+  updatedAt DateTime @default(now())
+  createdAt DateTime @default(now())
+  isDeleted  Boolean  @default(false)
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  device    String
+  expiresAt DateTime
 }

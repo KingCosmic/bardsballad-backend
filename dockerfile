@@ -1,6 +1,6 @@
 # Dockerfile
 # Use the official Node.js image
-FROM node:14
+FROM node:22
 
 # Set the working directory
 WORKDIR /usr/src/app
@@ -18,4 +18,4 @@ COPY . .
 EXPOSE 3000
 
 # Command to run the application
-CMD ["node", "server.js"]
+CMD ["sh", "-c", "npx prisma generate && npx prisma migrate deploy && node server.js"]

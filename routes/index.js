@@ -1,9 +1,11 @@
 const express = require('express');
 const router = express.Router();
 
-const authRoutes = require('./auth');
+const addPrisma = require('../middleware/addPrisma');
 
-router.use('/auth', authRoutes);
+const v1Routes = require('./v1');
+
+router.use('/v1', addPrisma, v1Routes);
 
 // Define your routes here
 router.get('/', (req, res) => {
