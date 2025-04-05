@@ -10,7 +10,9 @@ const prisma = new PrismaClient();
 router.post('/register', async (req, res) => {
   const { username, email, password } = req.body;
 
-  console.log(req.body);
+  if (!username || !email || !password) {
+    return res.status(400).send('All fields are required');
+  }
 
   const existingUser = await prisma.user.findFirst({
     where: {

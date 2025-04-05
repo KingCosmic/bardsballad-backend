@@ -1,7 +1,7 @@
-# My Express App
+# BardsBallad Backend
 
 ## Description
-This is a simple Express server that responds with "Hello, World!" when accessed.
+This is the backend of BardsBallad.
 
 ## Getting Started
 

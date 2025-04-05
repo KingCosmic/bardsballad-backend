@@ -1,10 +1,10 @@
-const jwt = require('jsonwebtoken')
+const jwt = require('jsonwebtoken');
 
 const verifyJWT = (token, secret) => {
   return new Promise((resolve, reject) => {
     jwt.verify(token, secret, (err, decoded) => {
       if (err) {
-        reject({ isValid: false, error: err.message });
+        resolve({ isValid: false, error: err.message });
       } else {
         resolve({ isValid: true, decoded });
       }
@@ -12,56 +12,40 @@ const verifyJWT = (token, secret) => {
   });
 };
 
-const isTokenExpiringSoon = (exp, thresholdInSeconds) => {
-  const currentTime = Math.floor(Date.now() / 1000);
-  return exp - currentTime <= thresholdInSeconds;
-};
+const authenticateToken = async (req, res, next) => {
+  const prisma = req.prisma;
+  const accessToken = req.headers['authorization']?.split(' ')[1];
+  const refreshToken = req.headers['refresh']?.split(' ')[1];
+  const deviceID = req.headers['device-id'];
 
-// Middleware to authenticate JWT
-const verifyRefreshToken = async (token) => {
-  if (!token) return res.sendStatus(401);
-
-  const { isValid, decoded } = await verifyJWT(token, process.env.JWT_REFRESH_SECRET);
-
-  if (!isValid) return { isValid: false, error: 'Invalid refresh token' };
-
-  let newToken = token;
-  const threshold = 60 * 60 * 24 * 2; // 2 days
-
-  if (isTokenExpiringSoon(decoded.exp, threshold)) {
-    newToken = jwt.sign(
-      {
-        id: decoded.id,
-        userID: decoded.userID
-      },
-      process.env.JWT_REFRESH_SECRET,
-      { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN }
-    );
-
-    // Update the refresh token in the database
-    await prisma.refreshToken.update({
-      where: { id: decoded.id },
-      data: { refreshToken: newToken }
-    });
+  if (!accessToken || !refreshToken || !deviceID) {
+    return res.status(401).json({ error: 'Missing tokens or device ID' });
   }
 
-  return { isValid: true, newToken: newToken, userID: decoded.id };
-};
+  // Verify Access Token First
+  const { isValid, decoded } = await verifyJWT(accessToken, process.env.JWT_ACCESS_SECRET);
+  if (isValid) {
+    req.user = decoded;
+    return next();
+  }
 
-// Middleware to authenticate JWT
-const verifyAccessToken = async (token, prisma, userID) => {
-  if (!token) return res.sendStatus(401);
+  // Verify the Refresh Token Before Querying Database
+  const { isValid: isRefreshValid, decoded: refreshDecoded } = await verifyJWT(refreshToken, process.env.JWT_REFRESH_SECRET);
+  if (!isRefreshValid) {
+    return res.status(403).json({ error: 'Invalid refresh token' });
+  }
 
-  const { isValid, decoded } = await verifyJWT(token, process.env.JWT_ACCESS_SECRET);
-
-  if (isValid) return { isValid: true, newToken: newToken, user: decoded };
-
-  const user = await prisma.user.findUnique({
-    where: { id: userID }
+  // Lookup the Refresh Token in the Database
+  const storedToken = await prisma.refreshToken.findUnique({
+    where: { token: refreshToken, deviceID },
   });
 
-  // Generate a new token with updated expiration
-  const newToken = jwt.sign(
+  if (!storedToken) {
+    return res.status(403).json({ error: 'Refresh token not found' });
+  }
+
+  // Generate a New Access Token
+  const newAccessToken = jwt.sign(
     {
       id: user.id, username: user.username, email: user.email, role: user.role
     },
@@ -69,26 +53,34 @@ const verifyAccessToken = async (token, prisma, userID) => {
     { expiresIn: process.env.JWT_ACCESS_EXPIRES_IN }
   );
 
-  return { isValid: true, newToken: newToken, user: { id: user.id, username: user.username, email: user.email, role: user.role } };
-};
+  let newRefreshToken = refreshToken;
+  let refreshTokenExpiresAt = storedToken.expiresAt;
 
-// Middleware to authenticate JWT
-const authenticateToken = async (req, res, next) => {
-  const accessToken = req.headers['authorization'] && req.headers['authorization'].split(' ')[1];
-  const refreshToken = req.headers['refresh'] && req.headers['refresh'].split(' ')[1];
+  // Rotate Refresh Token If Close to Expiring
+  const remainingTime = storedToken.expiresAt - Date.now();
+  const refreshThreshold = process.env.REFRESH_TOKEN_RENEW_THRESHOLD * 1000;
 
-  if (!accessToken || !refreshToken) return res.sendStatus(401);
+  if (remainingTime < refreshThreshold) {
+    newRefreshToken = jwt.sign(
+      { id: storedToken.userId, deviceID },
+      process.env.JWT_REFRESH_SECRET,
+      { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN }
+    );
 
-  const { isValid: isRefreshValid, newToken: newRefreshToken, userID } = await verifyRefreshToken(refreshToken);
-  if (!isRefreshValid) return res.sendStatus(401);
+    refreshTokenExpiresAt = Date.now() + process.env.JWT_REFRESH_EXPIRES_IN * 1000;
 
-  const { isValid: isAccessValid, newToken: newAccessToken, user } = await verifyAccessToken(accessToken, req.prisma, userID);
-  if (!isAccessValid) return res.sendStatus(401);
+    await prisma.refreshToken.update({
+      where: { token: refreshToken },
+      data: { token: newRefreshToken, expiresAt: refreshTokenExpiresAt },
+    });
+  }
 
+  // Set New Tokens in Headers
   res.setHeader('Authorization', `Bearer ${newAccessToken}`);
   res.setHeader('Refresh', `Bearer ${newRefreshToken}`);
 
-  req.user = user;
+  // Attach User ID to Request and Proceed
+  req.user = { id: storedToken.userId };
   next();
 };
 

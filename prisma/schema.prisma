@@ -14,14 +14,14 @@ datasource db {
 }
 
 model User {
-  id       Int    @id @default(autoincrement())
-  username String @unique
-  email    String @unique
-  password String
-  role     Int    @default(0)
+  id        String   @id @default(uuid())
+  username  String   @unique
+  email     String   @unique
+  password  String
+  role      Int      @default(0)
 
+  Devices   Device[]
   Characters    Character[]
-  RefreshTokens RefreshToken[]
 }
 
 model Character {
@@ -39,11 +39,14 @@ model Character {
   isDeleted Boolean  @default(false)
 }
 
-model RefreshToken {
-  id        Int      @id @default(autoincrement())
-  user      User     @relation(fields: [userId], references: [id])
-  userId    Int      @unique
-  token     String   @unique
-  device    String
-  expiresAt DateTime
+model Device {
+  id        String   @id @default(uuid())
+  name      String
+  rt        String   @unique @map("refresh_token")
+
+  user_id   String
+  user      User     @relation(fields: [user_id], references: [id])
+  
+  createdAt DateTime @default(now())
+  lastUsed  DateTime @default(now())
 }
