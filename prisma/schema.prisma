@@ -14,28 +14,35 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  username  String   @unique
-  email     String   @unique
-  password  String
-  role      String   @default("free")
+  id       Int    @id @default(autoincrement())
+  username String @unique
+  email    String @unique
+  password String
+  role     Int    @default(0)
+
+  Characters    Character[]
+  RefreshTokens RefreshToken[]
 }
 
 model Character {
-  id        String   @id
-  name      String
+  id          Int     @id @default(autoincrement())
+  name        String
+  creator     User    @relation(fields: [userId], references: [id])
+  userId      Int     @unique
+  description String?
 
-  data      Json
-  system    Json
+  data   Json
+  system Json
 
   updatedAt DateTime @default(now())
   createdAt DateTime @default(now())
-  isDeleted  Boolean  @default(false)
+  isDeleted Boolean  @default(false)
 }
 
 model RefreshToken {
-  id        String   @id @default(uuid())
-  userId    String
+  id        Int      @id @default(autoincrement())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    Int      @unique
   token     String   @unique
   device    String
   expiresAt DateTime
