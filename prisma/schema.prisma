@@ -34,7 +34,7 @@ model Character {
   data   Json
   system Json
 
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now())
   createdAt DateTime @default(now())
   isDeleted Boolean  @default(false)
 }
