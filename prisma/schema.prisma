@@ -19,6 +19,8 @@ model User {
   email     String   @unique
   password  String
   role      String   @default("free")
+
+  devices   Device[]
 }
 
 model Character {
@@ -30,13 +32,17 @@ model Character {
 
   updatedAt DateTime @default(now())
   createdAt DateTime @default(now())
-  isDeleted  Boolean  @default(false)
+  isDeleted Boolean  @default(false)
 }
 
-model RefreshToken {
+model Device {
   id        String   @id @default(uuid())
-  userId    String
-  token     String   @unique
-  device    String
-  expiresAt DateTime
+  name      String
+  rt        String   @unique @map("refresh_token")
+
+  user_id   String
+  user      User     @relation(fields: [user_id], references: [id])
+  
+  createdAt DateTime @default(now())
+  lastUsed  DateTime @default(now())
 }
