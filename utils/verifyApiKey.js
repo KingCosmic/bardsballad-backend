@@ -23,7 +23,7 @@ function verifyApiKey(apiKey) {
 
   const now = Date.now();
 
-  if (now - timestamp > (convertToDays(process.env.API_KEY_EXPIRES_IN))) return false;
+  if (now - timestamp > convertToDays(process.env.API_KEY_EXPIRES_IN)) return false;
 
   return true;
 }

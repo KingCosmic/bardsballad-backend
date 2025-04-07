@@ -71,7 +71,10 @@ const authenticateToken = async (req, res, next) => {
 
     await req.prisma.device.update({
       where: { id: device.id },
-      data: { api_key: newApiKey },
+      data: {
+        api_key: newApiKey,
+        token_expires: new Date(Date.now() + convertToDays(process.env.API_KEY_EXPIRES_IN)),
+      },
     });
   }
 
