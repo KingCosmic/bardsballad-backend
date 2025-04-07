@@ -14,25 +14,26 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  username  String   @unique
-  email     String   @unique
-  password  String
-  role      Int      @default(0)
+  id         BigInt   @id
+  username   String   @unique
+  email      String   @unique
+  password   String
+  role       Int      @default(0)
 
-  Devices   Device[]
-  Characters    Character[]
+  Devices    Device[]
+  Characters Character[]
 }
 
 model Character {
-  id          Int     @id @default(autoincrement())
-  name        String
-  creator     User    @relation(fields: [userId], references: [id])
-  userId      Int     @unique
-  description String?
+  id        BigInt  @id
 
-  data   Json
-  system Json
+  name      String
+
+  user_id   BigInt  @unique
+  creator   User    @relation(fields: [user_id], references: [id])
+
+  data      Json
+  system    Json
 
   updatedAt DateTime @default(now())
   createdAt DateTime @default(now())
@@ -40,13 +41,15 @@ model Character {
 }
 
 model Device {
-  id        String   @id @default(uuid())
-  name      String
-  rt        String   @unique @map("refresh_token")
+  id            BigInt   @id
+  name          String
 
-  user_id   String
-  user      User     @relation(fields: [user_id], references: [id])
+  api_key       String   @unique
+  token_expires DateTime
+
+  user_id       BigInt
+  user          User     @relation(fields: [user_id], references: [id])
   
-  createdAt DateTime @default(now())
-  lastUsed  DateTime @default(now())
+  createdAt     DateTime @default(now())
+  lastUsed      DateTime @default(now())
 }

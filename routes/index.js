@@ -9,7 +9,7 @@ router.use('/v1', addPrisma, v1Routes);
 
 // Define your routes here
 router.get('/', (req, res) => {
-  res.send('Hello, World!');
+  res.send('Hello, World! Currently using v1 routes');
 });
 
 module.exports = router; 
