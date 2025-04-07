@@ -37,22 +37,22 @@ This is the backend of BardsBallad.
 #### Using Docker Compose
 1. Build the application with Docker Compose:
    ```bash
-   docker-compose up --build
+   docker compose up --build
    ```
 
 2. Start the application:
    ```bash
-   docker-compose up
+   docker compose up
    ```
 
 3. Stop the application:
    ```bash
-   docker-compose down
+   docker compose down
    ```
 
 4. Stop the application, remove containers, and volumes:
    ```bash
-   docker-compose down -v
+   docker compose down -v
    ```
 
 ### Accessing the Application

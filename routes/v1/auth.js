@@ -1,20 +1,36 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const { PrismaClient } = require('@prisma/client');
+
+const snowflake = require('../../utils/snowflake');
+const generateApiKey = require('../../utils/generateApiKey');
+
 const router = express.Router();
 
-const prisma = new PrismaClient();
+// Helper to generate JWTs
+const generateTokens = (user) => {
+  const safeUserID = user.id.toString();
+
+  const accessToken = jwt.sign(
+    { id: safeUserID, username: user.username, email: user.email, role: user.role },
+    process.env.JWT_ACCESS_SECRET,
+    { expiresIn: process.env.JWT_ACCESS_EXPIRES_IN }
+  );
+
+  const apiKey = generateApiKey();
+
+  return { accessToken, apiKey };
+};
 
 // Register route
 router.post('/register', async (req, res) => {
-  const { username, email, password } = req.body;
+  const { username, email, password, deviceName } = req.body;
 
-  if (!username || !email || !password) {
+  if (!username || !email || !password || !deviceName) {
     return res.status(400).send('All fields are required');
   }
 
-  const existingUser = await prisma.user.findFirst({
+  const existingUser = await req.prisma.user.findFirst({
     where: {
       OR: [
         { username: username },
@@ -26,50 +42,75 @@ router.post('/register', async (req, res) => {
   if (existingUser) return res.status(400).send('User already exists, try logging in.');
 
   const hashedPassword = await bcrypt.hash(password, 10);
-  const user = await prisma.user.create({
+  const user = await req.prisma.user.create({
     data: {
+      id: snowflake.getUniqueID(),
       username,
       email,
       password: hashedPassword
     }
   });
 
-  let token;
-  try {
-    token = jwt.sign({
-      id: user.id, username: user.username, email: user.email, role: user.role
-    }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN });
-  } catch (error) {
-    return res.status(500).send(new Error('Error! Something went wrong.'));
-  }
+  const { accessToken, apiKey } = generateTokens(user);
 
-  res.status(201).json({ token });
+  const device = await req.prisma.device.create({
+    data: {
+      id: snowflake.getUniqueID(),
+      name: deviceName,
+      user_id: user.id,
+      api_key: apiKey,
+      token_expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * process.env.API_KEY_EXPIRES_IN),
+    }
+  });
+
+  res.status(200).json({ accessToken, apiKey, deviceId: device.id.toString() });
 });
 
 // Login route
 router.post('/login', async (req, res) => {
-  const { username, password } = req.body;
+  const { username, password, deviceId, deviceName } = req.body;
 
-  const user = await prisma.user.findUnique({
+  if (!username ||!password ||!deviceName) {
+    return res.status(400).send('All fields are required');
+  }
+
+  const user = await req.prisma.user.findUnique({
     where: { username: username }
   });
 
-  if (!user) return res.status(400).send('User not found');
+  if (!user) return res.status(401).send('Invalid credentials');
 
   const isMatch = await bcrypt.compare(password, user.password);
-  
-  if (!isMatch) return res.status(400).send('Invalid credentials');
+  if (!isMatch) return res.status(401).send('Invalid credentials');
 
-  let token;
-  try {
-    token = jwt.sign({
-      id: user.id, username: user.username, email: user.email, role: user.role
-    }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN });
-  } catch (error) {
-    return res.status(500).send(new Error('Error! Something went wrong.'));
+  const { accessToken, apiKey } = generateTokens(user);
+
+  let finalDeviceId = deviceId;
+  if (!finalDeviceId) {
+    const device = await req.prisma.device.create({
+      data: {
+        id: snowflake.getUniqueID(),
+        name: deviceName,
+        user_id: user.id,
+        api_key: apiKey,
+      }
+    });
+
+    finalDeviceId = device.id.toString();
+  } else {
+    const device = await req.prisma.device.findUnique({
+      where: { id: finalDeviceId, user_id: user.id  }
+    });
+
+    if (!device) return res.status(401).send('Invalid device');
   }
 
-  res.status(200).json({ token });
+  await req.prisma.device.update({
+    where: { id: finalDeviceId, user_id: user.id },
+    data: { api_key: apiKey }
+  });
+
+  res.status(200).json({ accessToken, apiKey, deviceId: finalDeviceId });
 });
 
 module.exports = router; 
