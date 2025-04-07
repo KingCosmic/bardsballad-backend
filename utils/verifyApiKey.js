@@ -1,5 +1,6 @@
 const { Snowflake } = require('nodejs-snowflake');
 const sfUtil = require('./snowflake');
+const convertToDays = require('./time/convertToDays');
 
 // this function only checks if the api key is valid, and not expired.
 // Not if it is associated with a user or device.
@@ -22,7 +23,7 @@ function verifyApiKey(apiKey) {
 
   const now = Date.now();
 
-  if (now - timestamp > (1000 * 60 * 60 * 24 * process.env.API_KEY_EXPIRES_IN)) return false;
+  if (now - timestamp > (convertToDays(process.env.API_KEY_EXPIRES_IN))) return false;
 
   return true;
 }

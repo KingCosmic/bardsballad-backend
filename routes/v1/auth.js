@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 
 const snowflake = require('../../utils/snowflake');
 const generateApiKey = require('../../utils/generateApiKey');
+const convertToDays = require('../../utils/time/convertToDays');
 
 const router = express.Router();
 
@@ -59,7 +60,7 @@ router.post('/register', async (req, res) => {
       name: deviceName,
       user_id: user.id,
       api_key: apiKey,
-      token_expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * process.env.API_KEY_EXPIRES_IN),
+      token_expires: new Date(Date.now() + convertToDays(process.env.API_KEY_EXPIRES_IN)),
     }
   });
 

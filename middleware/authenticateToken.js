@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const verifyApiKey = require('../utils/verifyApiKey');
 const generateApiKey = require('../utils/generateApiKey');
+const convertToHours = require('../utils/time/convertToHours');
 
 const verifyJWT = (token, secret) => {
   return new Promise((resolve, reject) => {
@@ -33,13 +34,12 @@ const authenticateToken = async (req, res, next) => {
     return next();
   }
 
-  // Verify the Refresh Token Before Querying Database
-  const isApiKeyValid = verifyApiKey(apiKey);
-  if (!isApiKeyValid) {
+  // Verify the Api Key Before Querying Database
+  if (!verifyApiKey(apiKey)) {
     return res.status(403).json({ error: 'Invalid api key' });
   }
 
-  // Lookup the Refresh Token in the Database
+  // Lookup the Api Key in the Database
   const device = await req.prisma.device.findUnique({
     where: { api_key: apiKey, id: BigInt(deviceID) },
     include: { user: true },
@@ -62,9 +62,9 @@ const authenticateToken = async (req, res, next) => {
 
   let newApiKey = apiKey;
 
-  // Rotate API Key If Close to Expiring
+  // Rotate Api Key if it's close to expiring
   const remainingTime = device.expiresAt - Date.now();
-  const apiKeyThreshold = 1000 * 60 * 60 * 24 * process.env.API_KEY_RENEW_THRESHOLD;
+  const apiKeyThreshold = convertToHours(process.env.API_KEY_RENEW_THRESHOLD);
 
   if (remainingTime < apiKeyThreshold) {
     newApiKey = generateApiKey();
