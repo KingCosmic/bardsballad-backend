@@ -1,4 +1,5 @@
 require('dotenv').config();
+require('./utils/validateEnvironment')
 
 const express = require('express');
 const app = express();
@@ -15,8 +16,8 @@ const startServer = async () => {
   app.use('/', routes);
 
   // Start the server
-  app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
+  app.listen(PORT, process.env.APP_LISTEN_IP, () => {
+    console.log(`Server is running on http://${process.env.APP_LISTEN_IP}:${PORT}`);
   });
 };
 
