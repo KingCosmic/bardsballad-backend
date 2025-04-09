@@ -18,9 +18,8 @@ const verifyJWT = (token, secret) => {
 const authenticateToken = async (req, res, next) => {
   const accessToken = req.headers['authorization']?.split(' ')[1];
   const apiKey = req.headers['x-api-key']
-  const deviceID = req.headers['device-id'];
 
-  if (!accessToken || !apiKey || !deviceID) {
+  if (!accessToken || !apiKey) {
     return res.status(401).json({ error: 'Missing tokens or device ID' });
   }
 
@@ -41,7 +40,7 @@ const authenticateToken = async (req, res, next) => {
 
   // Lookup the Api Key in the Database
   const device = await req.prisma.device.findUnique({
-    where: { api_key: apiKey, id: BigInt(deviceID) },
+    where: { api_key: apiKey },
     include: { user: true },
   });
 

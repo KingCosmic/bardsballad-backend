@@ -10,10 +10,12 @@ const router = express.Router();
 
 // Helper to generate JWTs
 const generateTokens = (user) => {
-  const safeUserID = user.id.toString();
-
   const accessToken = jwt.sign(
-    { id: safeUserID, username: user.username, email: user.email, role: user.role },
+    {
+      ...user,
+      id: user.id.toString(),
+      password: undefined,
+    },
     process.env.JWT_ACCESS_SECRET,
     { expiresIn: process.env.JWT_ACCESS_EXPIRES_IN }
   );

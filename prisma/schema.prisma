@@ -21,16 +21,17 @@ model User {
   role       Int      @default(0)
 
   Devices    Device[]
-  Characters Character[]
+  
+  synced_characters Json @default("[]")
 }
 
 model Character {
   id        BigInt  @id
+  local_id  String
 
   name      String
 
-  user_id   BigInt  @unique
-  creator   User    @relation(fields: [user_id], references: [id])
+  user_id   BigInt
 
   data      Json
   system    Json
@@ -38,6 +39,8 @@ model Character {
   updatedAt DateTime @default(now())
   createdAt DateTime @default(now())
   isDeleted Boolean  @default(false)
+
+  @@unique([local_id, user_id])
 }
 
 model Device {
