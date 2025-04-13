@@ -21,6 +21,10 @@ router.post('/change-synced', authenticateToken, async (req, res) => {
     },
   });
 
+  // generate a new token with updated synced characters
+  
+
+
   res.status(200).json({ synced_characters: characterIds });
 })
 

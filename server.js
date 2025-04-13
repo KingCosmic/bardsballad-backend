@@ -16,7 +16,7 @@ const startServer = async () => {
   app.use('/', routes);
 
   // Start the server
-  app.listen(PORT, process.env.APP_LISTEN_IP, () => {
+  app.listen(PORT, () => {
     console.log(`Server is running on http://${process.env.APP_LISTEN_IP}:${PORT}`);
   });
 };
