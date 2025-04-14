@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 const snowflake = require('../../utils/snowflake');
 const generateApiKey = require('../../utils/generateApiKey');
 const convertToDays = require('../../utils/time/convertToDays');
+const validateRegisterPost = require('../../utils/validateRegisterPost');
 
 const router = express.Router();
 
@@ -33,6 +34,12 @@ router.post('/register', async (req, res) => {
     return res.status(400).send('All fields are required');
   }
 
+  const validRegisterPost = validateRegisterPost(username, email, password, deviceName);
+
+  if (validRegisterPost.success === false) {
+    return res.status(400).send(validRegisterPost.error.issues[0].message);
+  }
+
   const existingUser = await req.prisma.user.findFirst({
     where: {
       OR: [
@@ -41,8 +48,15 @@ router.post('/register', async (req, res) => {
       ]
     }
   });
-  
-  if (existingUser) return res.status(400).send('User already exists, try logging in.');
+
+  if (existingUser) {
+    if (existingUser.username === username) {
+      return res.status(400).send('Username is already taken.');
+    }
+    if (existingUser.email === email) {
+      return res.status(400).send('Email address is already registered.');
+    }
+  }
 
   const hashedPassword = await bcrypt.hash(password, 10);
   const user = await req.prisma.user.create({
