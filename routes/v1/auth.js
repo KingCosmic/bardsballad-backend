@@ -34,7 +34,7 @@ router.post('/register', async (req, res) => {
     return res.status(400).send('All fields are required');
   }
 
-  const validRegisterPost = validateRegisterPost(username, email, password, deviceName);
+  const validRegisterPost = validateRegisterPost(req.body);
 
   if (validRegisterPost.success === false) {
     return res.status(400).send(validRegisterPost.error.issues[0].message);
