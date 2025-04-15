@@ -7,6 +7,8 @@ const authenticateToken = require("../../middleware/authenticateToken");
 const roles = require("../../constants/roles");
 const snowflake = require("../../utils/snowflake");
 
+const jwt = require('jsonwebtoken');
+
 router.post('/change-synced', authenticateToken, async (req, res) => {
   const { characterIds } = req.body;
 
@@ -22,8 +24,18 @@ router.post('/change-synced', authenticateToken, async (req, res) => {
   });
 
   // generate a new token with updated synced characters
-  
+  const updatedAccessToken = jwt.sign(
+    {
+      ...req.user,
+      id: req.user.id.toString(), // Convert BigInt to string
+      password: undefined, // Remove password from token payload
+      synced_characters: characterIds, // Update synced characters in token payload
+    },
+    process.env.JWT_ACCESS_SECRET,
+    { expiresIn: process.env.JWT_ACCESS_EXPIRES_IN }
+  );
 
+  res.setHeader('Authorization', `Bearer ${updatedAccessToken}`);
 
   res.status(200).json({ synced_characters: characterIds });
 })
@@ -36,8 +48,6 @@ router.get('/pull', authenticateToken, async (req, res) => {
   const updatedAt = new Date(req.query.updatedAt);
 
   let documents = []; // initialize documents as an empty array
-
-  console.log(req.user.synced_characters)
 
   if (req.user.role === roles.FREE) {
     // grab list of synced characters.
@@ -143,39 +153,36 @@ router.post("/push", authenticateToken, async (req, res) => {
     // Process all changes in parallel for better performance
     await Promise.all(
       changeRows.map(async (changeRow) => {
-        if (req.user.role === roles.FREE && !req.user.synced_characters.includes(changeRow.newDocumentState.local_id))
+        if (req.user.role === roles.FREE && !req.user.synced_characters.includes(changeRow.local_id))
           return
 
         const realMasterState = await tx.character.findFirst({
           where: {
-            local_id: changeRow.newDocumentState.local_id,
+            local_id: changeRow.local_id,
             user_id: req.user.id,
           },
         });
 
-        if (
-          (realMasterState && !changeRow.assumedMasterState) ||
-          (realMasterState &&
-            changeRow.assumedMasterState &&
-            realMasterState.updatedAt !==
-              changeRow.assumedMasterState.updatedAt)
-        ) {
+        // This check was here in rxdb but I don't know how we would ever hit this case.
+        // const isMissingLocally = (realMasterState && (changeRow.lastSyncedAt === undefined))
+        const wasUpdatedRemotely = (realMasterState && realMasterState.updatedAt > changeRow.updatedAt)
+
+        if (wasUpdatedRemotely) {
+          // If the local state is missing or the remote state has been updated, we have a conflict
           conflicts.push(realMasterState);
         } else {
           const newDocumentState = {
-            ...changeRow.newDocumentState,
+            ...changeRow,
             data: {},
-            createdAt: new Date(changeRow.newDocumentState.createdAt),
-            updatedAt: new Date(changeRow.newDocumentState.updatedAt),
-            isDeleted: changeRow.newDocumentState._deleted,
+            createdAt: new Date(changeRow.createdAt),
+            updatedAt: new Date(changeRow.updatedAt),
           };
-          delete newDocumentState["_deleted"];
 
           // Batch update/create operation
           await tx.character.upsert({
             where: {
               local_id_user_id: {
-                local_id: changeRow.newDocumentState.local_id,
+                local_id: changeRow.local_id,
                 user_id: req.user.id,
               },
             },
