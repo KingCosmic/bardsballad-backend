@@ -14,4 +14,8 @@ router.use('/test', authenticateToken, async (req, res) => {
   res.send(`Test Successful ${req.user.username}`);
 })
 
+router.use('/ping', (req, res) => {
+  res.send('Pong!');
+})
+
 module.exports = router; 
