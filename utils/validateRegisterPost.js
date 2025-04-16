@@ -13,7 +13,7 @@ const passwordValidation = z
     .string()
     .min(8, { message: "Password must be at least 8 characters long." })
     .max(256, { message: "Lamest DoS attack I've ever seen." })
-    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/, {
+    .regex(/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@#$!%*?&])[A-Za-z\d@#$!%*?&]{8,}/, {
         message:
             "Password must contain lowercase, uppercase, number and a symbol.",
     });
